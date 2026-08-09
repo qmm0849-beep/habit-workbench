@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#f4f0e8" />
+    <meta name="description" content="每周养成一个新习惯的手机工作台" />
+    <title>习惯工作台</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="side-rail" aria-label="习惯工作栏">
+        <div class="brand" aria-label="习惯工作台">
+          <span>循</span>
+        </div>
+        <div class="single-rail-label" aria-hidden="true">
+          <span class="single-rail-icon">⌁</span>
+          <span>习惯</span>
+        </div>
+        <div class="week-mark" aria-label="当前周数">
+          <span>W</span>
+          <strong id="weekNumber">01</strong>
+        </div>
+      </aside>
+
+      <main class="main-canvas">
+        <header class="page-header">
+          <div>
+            <p class="eyebrow" id="todayLabel">今天</p>
+            <h1>我的习惯工作台</h1>
+          </div>
+          <button class="add-button" id="openComposer" type="button">
+            <span aria-hidden="true">＋</span>
+            <span>新习惯</span>
+          </button>
+        </header>
+
+        <section class="focus-card" aria-labelledby="focusTitle">
+          <div class="focus-topline">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span>本周专注</span>
+            <span class="focus-count" id="focusCount">第 1 / 7 天</span>
+          </div>
+          <div class="focus-body">
+            <div>
+              <p class="focus-label" id="focusStatus">尚未设置</p>
+              <h2 id="focusTitle">还没有本周专注</h2>
+              <p class="focus-sentence" id="focusSentence">在下方选择一个习惯作为本周专注。</p>
+            </div>
+            <button class="check-button" id="checkToday" type="button" disabled>
+              <span class="check-icon" aria-hidden="true">✓</span>
+              <span class="check-text">今日完成</span>
+            </button>
+          </div>
+          <div class="week-track" id="weekTrack" aria-label="本周完成情况"></div>
+        </section>
+
+        <section class="habit-section">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">全部习惯</p>
+              <h2>我的习惯</h2>
+            </div>
+            <span class="count-badge" id="habitCount">0</span>
+          </div>
+          <p class="drag-hint">按住左侧拖动柄即可调整顺序；触屏和鼠标均可操作。</p>
+          <div class="habit-list" id="habitList" aria-live="polite"></div>
+        </section>
+      </main>
+    </div>
+
+    <dialog class="composer" id="composer">
+      <form class="composer-card" id="habitForm" method="dialog">
+        <div class="composer-header">
+          <div>
+            <p class="eyebrow">实施意图</p>
+            <h2>写下你的新习惯</h2>
+          </div>
+          <button class="icon-button" id="closeComposer" type="button" aria-label="关闭">×</button>
+        </div>
+
+        <p class="formula-preview" id="formulaPreview">
+          我将在 <strong>某个时间</strong>，在 <strong>某个地点</strong>，<strong>做一件具体的小事</strong>。
+        </p>
+
+        <label class="field">
+          <span>时间</span>
+          <input id="habitTime" name="time" type="text" placeholder="例如：每天早上 7:30" maxlength="30" required />
+        </label>
+        <label class="field">
+          <span>地点</span>
+          <input id="habitPlace" name="place" type="text" placeholder="例如：在卧室窗边" maxlength="30" required />
+        </label>
+        <label class="field">
+          <span>做什么事</span>
+          <input id="habitAction" name="action" type="text" placeholder="例如：阅读 5 页书" maxlength="40" required />
+        </label>
+
+        <div class="composer-actions">
+          <button class="secondary-button" id="cancelComposer" type="button">取消</button>
+          <button class="primary-button" type="submit">加入习惯列表</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <template id="habitCardTemplate">
+      <article class="habit-card">
+        <button class="drag-handle" type="button" aria-label="拖动排序">⠿</button>
+        <div class="habit-index" aria-hidden="true">01</div>
+        <div class="habit-content">
+          <h3></h3>
+          <p></p>
+          <div class="habit-labels">
+            <span class="habit-meta"></span>
+            <span class="focus-tag" hidden>本周专注</span>
+          </div>
+        </div>
+        <div class="habit-actions">
+          <button class="focus-habit" type="button" aria-label="设为本周专注" title="设为本周专注">☆</button>
+          <button class="more-button" type="button" aria-label="更多操作">•••</button>
+          <div class="action-menu" hidden>
+            <button class="mark-formed" type="button">标记为已养成</button>
+            <button class="restore-habit" type="button">改为养成中</button>
+            <button class="delete-habit danger" type="button">删除</button>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
