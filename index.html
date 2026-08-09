@@ -85,6 +85,11 @@
         </p>
 
         <label class="field">
+          <span>开始日</span>
+          <input id="habitStart" name="start" type="date" required />
+          <small class="field-hint">可以提前创建，例如今天设置、明天开始。</small>
+        </label>
+        <label class="field">
           <span>时间</span>
           <input id="habitTime" name="time" type="text" placeholder="例如：每天早上 7:30" maxlength="30" required />
         </label>
@@ -115,6 +120,7 @@
           <p></p>
           <div class="habit-labels">
             <span class="habit-meta"></span>
+            <span class="start-meta"></span>
             <span class="focus-tag" hidden>本周专注</span>
           </div>
         </div>

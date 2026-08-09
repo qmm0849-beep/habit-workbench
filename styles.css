@@ -238,7 +238,7 @@ h1 { margin-bottom: 0; font-family: Georgia, "Noto Serif SC", serif; font-size: 
 .habit-content h3 { margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
 .habit-content p { margin-bottom: 4px; color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
 .habit-labels { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
-.habit-meta, .focus-tag {
+.habit-meta, .start-meta, .focus-tag {
   border-radius: 999px;
   padding: 3px 7px;
   background: #f6e5dc;
@@ -247,6 +247,8 @@ h1 { margin-bottom: 0; font-family: Georgia, "Noto Serif SC", serif; font-size: 
   font-weight: 800;
 }
 .habit-meta.is-formed { background: #dcebe1; color: var(--green-dark); }
+.start-meta { background: #ebe9e2; color: #68736e; }
+.start-meta.is-future { background: #e7edf4; color: #526a7d; }
 .focus-tag { background: #17382f; color: #fff; }
 .habit-actions { position: relative; display: flex; align-items: center; gap: 2px; }
 .mini-button, .focus-habit, .more-button, .icon-button {
@@ -306,6 +308,7 @@ h1 { margin-bottom: 0; font-family: Georgia, "Noto Serif SC", serif; font-size: 
 .field span { font-size: 12px; font-weight: 800; }
 .field input { width: 100%; border: 1px solid #d7d4ca; border-radius: 13px; padding: 12px 13px; outline: none; background: #fff; color: var(--ink); }
 .field input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(76, 122, 101, 0.12); }
+.field-hint { margin-top: -2px; color: var(--ink-soft); font-size: 11px; }
 .composer-actions { justify-content: flex-end; gap: 9px; margin-top: 24px; }
 .secondary-button { background: #ece9e2; color: var(--ink); }
 

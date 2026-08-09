@@ -10,6 +10,7 @@ const starterHabits = [
     action: "阅读 5 页书",
     status: "growing",
     createdAt: new Date().toISOString(),
+    startOn: dateKey(new Date()),
     focusStartedOn: dateKey(new Date()),
     checks: [],
   },
@@ -20,6 +21,7 @@ const starterHabits = [
     action: "快走 20 分钟",
     status: "growing",
     createdAt: new Date().toISOString(),
+    startOn: dateKey(new Date()),
     checks: [],
   },
   {
@@ -29,6 +31,7 @@ const starterHabits = [
     action: "写下三件值得感谢的事",
     status: "formed",
     createdAt: new Date(Date.now() - 28 * 86400000).toISOString(),
+    startOn: dateKey(new Date()),
     checks: [],
   },
 ];
@@ -37,11 +40,15 @@ function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (Array.isArray(saved?.habits)) {
+      const today = dateKey(new Date());
+      saved.habits.forEach((habit) => {
+        habit.startOn ||= habit.focusStartedOn || habit.createdAt?.slice(0, 10) || today;
+      });
       const focusStillExists = saved.habits.some((habit) => habit.id === saved.focusId);
       const focusId = focusStillExists ? saved.focusId : saved.habits[0]?.id ?? null;
       const focusedHabit = saved.habits.find((habit) => habit.id === focusId);
       if (focusedHabit && !focusedHabit.focusStartedOn) {
-        focusedHabit.focusStartedOn = dateKey(new Date());
+        focusedHabit.focusStartedOn = laterDateKey(today, focusedHabit.startOn);
       }
       return {
         habits: saved.habits,
@@ -62,6 +69,7 @@ const $ = (selector) => document.querySelector(selector);
 const habitList = $("#habitList");
 const composer = $("#composer");
 const fields = {
+  start: $("#habitStart"),
   time: $("#habitTime"),
   place: $("#habitPlace"),
   action: $("#habitAction"),
@@ -80,6 +88,15 @@ function dateKey(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function laterDateKey(first, second) {
+  return first > second ? first : second;
+}
+
+function shortDate(key) {
+  const date = new Date(`${key}T00:00:00`);
+  return `${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
 function weekNumber(date = new Date()) {
@@ -108,11 +125,12 @@ function emptyState() {
 function setFocus(id) {
   const habit = state.habits.find((item) => item.id === id);
   if (!habit) return;
+  const today = dateKey(new Date());
   state.focusId = id;
-  habit.focusStartedOn = dateKey(new Date());
+  habit.focusStartedOn = laterDateKey(today, habit.startOn || today);
   saveState();
   render();
-  showToast("已设为本周专注，今天是第 1 天");
+  showToast(habit.focusStartedOn > today ? `已设为本周专注，将于${shortDate(habit.focusStartedOn)}开始` : "已设为本周专注，今天是第 1 天");
 }
 
 function makeCard(habit, index) {
@@ -128,6 +146,9 @@ function makeCard(habit, index) {
   const status = card.querySelector(".habit-meta");
   status.textContent = habit.status === "formed" ? "已养成" : "养成中";
   status.classList.toggle("is-formed", habit.status === "formed");
+  const startMeta = card.querySelector(".start-meta");
+  startMeta.textContent = `${shortDate(habit.startOn)}开始`;
+  startMeta.classList.toggle("is-future", habit.startOn > dateKey(new Date()));
   card.querySelector(".focus-tag").hidden = !isFocus;
 
   const focusButton = card.querySelector(".focus-habit");
@@ -207,7 +228,10 @@ function deleteHabit(id) {
   state.habits = state.habits.filter((habit) => habit.id !== id);
   if (state.focusId === id) {
     state.focusId = state.habits[0]?.id ?? null;
-    if (state.habits[0]) state.habits[0].focusStartedOn = dateKey(new Date());
+    if (state.habits[0]) {
+      const today = dateKey(new Date());
+      state.habits[0].focusStartedOn = laterDateKey(today, state.habits[0].startOn || today);
+    }
   }
   saveState();
   render();
@@ -224,6 +248,7 @@ function renderFocus() {
   const today = dateKey(now);
   let cycleStart = null;
   let elapsedDays = 0;
+  let notStarted = false;
   let cycleEnded = false;
 
   if (!focus) {
@@ -235,25 +260,31 @@ function renderFocus() {
     checkButton.querySelector(".check-text").textContent = "今日完成";
   } else {
     if (!focus.focusStartedOn) {
-      focus.focusStartedOn = today;
+      focus.focusStartedOn = laterDateKey(today, focus.startOn || today);
       saveState();
     }
     cycleStart = new Date(`${focus.focusStartedOn}T00:00:00`);
     const todayStart = new Date(now);
     todayStart.setHours(0, 0, 0, 0);
-    elapsedDays = Math.max(0, Math.floor((todayStart - cycleStart) / 86400000));
+    elapsedDays = Math.floor((todayStart - cycleStart) / 86400000);
+    notStarted = elapsedDays < 0;
     cycleEnded = elapsedDays > 6;
     const startLabel = `${cycleStart.getMonth() + 1}月${cycleStart.getDate()}日起`;
     status.textContent = `${focus.status === "formed" ? "已养成" : "养成中"} · ${startLabel}`;
     title.textContent = focus.action;
     sentence.textContent = formatSentence(focus);
-    checkButton.disabled = cycleEnded;
+    checkButton.disabled = notStarted || cycleEnded;
     const done = focus.checks?.includes(today);
     checkButton.classList.toggle("is-done", done);
-    checkButton.querySelector(".check-text").textContent = cycleEnded ? "本周期已结束" : done ? "今天已完成" : "今日完成";
+    checkButton.querySelector(".check-text").textContent = notStarted ? "尚未开始" : cycleEnded ? "本周期已结束" : done ? "今天已完成" : "今日完成";
   }
 
-  $("#focusCount").textContent = !focus ? "等待设置" : cycleEnded ? "7 天周期已结束" : `第 ${elapsedDays + 1} / 7 天`;
+  const daysUntilStart = Math.abs(elapsedDays);
+  $("#focusCount").textContent = !focus
+    ? "等待设置"
+    : notStarted
+      ? daysUntilStart === 1 ? "明天开始" : `${daysUntilStart} 天后开始`
+      : cycleEnded ? "7 天周期已结束" : `第 ${elapsedDays + 1} / 7 天`;
   const track = $("#weekTrack");
   track.innerHTML = "";
   cycleDays.forEach((name, index) => {
@@ -292,6 +323,8 @@ function escapeHtml(value) {
 
 function openComposer() {
   $("#habitForm").reset();
+  fields.start.min = dateKey(new Date());
+  fields.start.value = dateKey(new Date());
   updateFormula();
   composer.showModal();
   setTimeout(() => fields.time.focus(), 80);
@@ -313,6 +346,7 @@ $("#habitForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const habit = {
     id: makeId(),
+    startOn: fields.start.value,
     time: fields.time.value.trim(),
     place: fields.place.value.trim(),
     action: fields.action.value.trim(),
@@ -323,7 +357,7 @@ $("#habitForm").addEventListener("submit", (event) => {
   state.habits.push(habit);
   if (!state.focusId) {
     state.focusId = habit.id;
-    habit.focusStartedOn = dateKey(new Date());
+    habit.focusStartedOn = laterDateKey(dateKey(new Date()), habit.startOn);
   }
   saveState();
   closeComposer();
