@@ -66,6 +66,18 @@
           </div>
           <p class="drag-hint">按住左侧拖动柄即可调整顺序；触屏和鼠标均可操作。</p>
           <div class="habit-list" id="habitList" aria-live="polite"></div>
+
+          <div class="data-panel">
+            <div>
+              <strong>数据备份与迁移</strong>
+              <p>习惯只保存在当前网址的浏览器中。更换网址或设备时，请先导出再导入。</p>
+            </div>
+            <div class="data-actions">
+              <button class="data-button" id="exportData" type="button">导出数据</button>
+              <button class="data-button is-primary" id="importData" type="button">导入并替换</button>
+              <input id="importFile" type="file" accept=".json,application/json" hidden />
+            </div>
+          </div>
         </section>
       </main>
     </div>

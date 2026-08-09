@@ -115,6 +115,69 @@ function showToast(message) {
   toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 2200);
 }
 
+function normalizeImportedState(payload) {
+  if (!Array.isArray(payload?.habits)) throw new Error("备份文件中没有习惯列表");
+  const today = dateKey(new Date());
+  const habits = payload.habits.map((habit) => {
+    if (!habit || typeof habit !== "object" || !habit.time || !habit.place || !habit.action) return null;
+    const startOn = /^\d{4}-\d{2}-\d{2}$/.test(habit.startOn || "")
+      ? habit.startOn
+      : habit.focusStartedOn || habit.createdAt?.slice(0, 10) || today;
+    return {
+      id: typeof habit.id === "string" && habit.id ? habit.id : makeId(),
+      time: String(habit.time),
+      place: String(habit.place),
+      action: String(habit.action),
+      status: habit.status === "formed" ? "formed" : "growing",
+      createdAt: habit.createdAt || new Date().toISOString(),
+      startOn,
+      focusStartedOn: /^\d{4}-\d{2}-\d{2}$/.test(habit.focusStartedOn || "") ? habit.focusStartedOn : undefined,
+      checks: Array.isArray(habit.checks) ? habit.checks.filter((item) => /^\d{4}-\d{2}-\d{2}$/.test(item)) : [],
+    };
+  }).filter(Boolean);
+  if (!habits.length) throw new Error("备份文件中没有可导入的有效习惯");
+  const focusId = habits.some((habit) => habit.id === payload.focusId) ? payload.focusId : habits[0].id;
+  const focusedHabit = habits.find((habit) => habit.id === focusId);
+  focusedHabit.focusStartedOn ||= laterDateKey(today, focusedHabit.startOn);
+  return { habits, focusId };
+}
+
+function exportData() {
+  const backup = {
+    app: "habit-workbench",
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    habits: state.habits,
+    focusId: state.focusId,
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `habit-workbench-backup-${dateKey(new Date())}.json`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast("数据备份已导出");
+}
+
+async function importData(file) {
+  try {
+    const payload = JSON.parse(await file.text());
+    const imported = normalizeImportedState(payload);
+    const confirmed = window.confirm(`将用备份中的 ${imported.habits.length} 个习惯替换当前列表，是否继续？`);
+    if (!confirmed) return;
+    state = imported;
+    saveState();
+    render();
+    showToast("习惯数据已导入");
+  } catch (error) {
+    console.warn("导入习惯数据失败", error);
+    window.alert(`无法导入：${error.message}`);
+  }
+}
+
 function emptyState() {
   const node = document.createElement("div");
   node.className = "empty-state";
@@ -378,6 +441,14 @@ $("#checkToday").addEventListener("click", () => {
   }
   saveState();
   render();
+});
+
+$("#exportData").addEventListener("click", exportData);
+$("#importData").addEventListener("click", () => $("#importFile").click());
+$("#importFile").addEventListener("change", async (event) => {
+  const [file] = event.target.files;
+  if (file) await importData(file);
+  event.target.value = "";
 });
 
 document.addEventListener("click", (event) => {
