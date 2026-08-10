@@ -53,12 +53,14 @@ function loadState() {
       return {
         habits: saved.habits,
         focusId,
+        smallTasks: normalizeSmallTasks(saved.smallTasks),
+        honorCount: Number.isFinite(saved.honorCount) ? Math.max(0, saved.honorCount) : 0,
       };
     }
   } catch (error) {
     console.warn("无法读取本地习惯数据", error);
   }
-  return { habits: starterHabits, focusId: starterHabits[0].id };
+  return { habits: starterHabits, focusId: starterHabits[0].id, smallTasks: [], honorCount: 0 };
 }
 
 let state = loadState();
@@ -67,6 +69,7 @@ let toastTimer = null;
 
 const $ = (selector) => document.querySelector(selector);
 const habitList = $("#habitList");
+const taskList = $("#taskList");
 const composer = $("#composer");
 const fields = {
   start: $("#habitStart"),
@@ -115,6 +118,19 @@ function showToast(message) {
   toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 2200);
 }
 
+function normalizeSmallTasks(tasks) {
+  if (!Array.isArray(tasks)) return [];
+  return tasks.map((task) => {
+    if (!task || typeof task.title !== "string" || !task.title.trim()) return null;
+    return {
+      id: typeof task.id === "string" && task.id ? task.id : makeId(),
+      title: task.title.trim(),
+      createdAt: task.createdAt || new Date().toISOString(),
+      completedAt: task.completedAt || null,
+    };
+  }).filter(Boolean);
+}
+
 function normalizeImportedState(payload) {
   if (!Array.isArray(payload?.habits)) throw new Error("备份文件中没有习惯列表");
   const today = dateKey(new Date());
@@ -139,7 +155,10 @@ function normalizeImportedState(payload) {
   const focusId = habits.some((habit) => habit.id === payload.focusId) ? payload.focusId : habits[0].id;
   const focusedHabit = habits.find((habit) => habit.id === focusId);
   focusedHabit.focusStartedOn ||= laterDateKey(today, focusedHabit.startOn);
-  return { habits, focusId };
+  const smallTasks = normalizeSmallTasks(payload.smallTasks);
+  const completedCount = smallTasks.filter((task) => task.completedAt).length;
+  const honorCount = Number.isFinite(payload.honorCount) ? Math.max(0, payload.honorCount) : completedCount;
+  return { habits, focusId, smallTasks, honorCount };
 }
 
 function exportData() {
@@ -149,6 +168,8 @@ function exportData() {
     exportedAt: new Date().toISOString(),
     habits: state.habits,
     focusId: state.focusId,
+    smallTasks: state.smallTasks,
+    honorCount: state.honorCount,
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -183,6 +204,53 @@ function emptyState() {
   node.className = "empty-state";
   node.innerHTML = "<strong>还没有习惯</strong><p>添加一个明确而简单的行动，从本周开始。</p>";
   return node;
+}
+
+function renderTasks() {
+  taskList.innerHTML = "";
+  const tasks = [...state.smallTasks].sort((first, second) => Number(Boolean(first.completedAt)) - Number(Boolean(second.completedAt)));
+  tasks.forEach((task) => {
+    const card = $("#taskCardTemplate").content.firstElementChild.cloneNode(true);
+    const complete = Boolean(task.completedAt);
+    card.classList.toggle("is-complete", complete);
+    card.querySelector("h3").textContent = task.title;
+    card.querySelector(".task-content p").textContent = complete ? "★ 已完成 · 获得荣誉星" : "等待完成";
+    const check = card.querySelector(".task-check");
+    check.textContent = complete ? "★" : "✓";
+    check.setAttribute("aria-label", complete ? "撤销小任务完成" : "标记小任务完成");
+    check.addEventListener("click", () => toggleSmallTask(task.id));
+    card.querySelector(".task-delete").addEventListener("click", () => deleteSmallTask(task.id));
+    taskList.append(card);
+  });
+  if (!tasks.length) {
+    const node = document.createElement("div");
+    node.className = "empty-state task-empty";
+    node.innerHTML = "<strong>暂时没有小任务</strong><p>把需要一次完成的事务记在这里。</p>";
+    taskList.append(node);
+  }
+  $("#honorCount").textContent = state.honorCount;
+}
+
+function toggleSmallTask(id) {
+  const task = state.smallTasks.find((item) => item.id === id);
+  if (!task) return;
+  if (task.completedAt) {
+    task.completedAt = null;
+    state.honorCount = Math.max(0, state.honorCount - 1);
+  } else {
+    task.completedAt = new Date().toISOString();
+    state.honorCount += 1;
+    showToast("小任务完成，获得一枚荣誉星 ★");
+  }
+  saveState();
+  renderTasks();
+}
+
+function deleteSmallTask(id) {
+  state.smallTasks = state.smallTasks.filter((task) => task.id !== id);
+  saveState();
+  renderTasks();
+  showToast("小任务已删除");
 }
 
 function setFocus(id) {
@@ -369,6 +437,7 @@ function render() {
   if (!state.habits.length) habitList.append(emptyState());
   $("#habitCount").textContent = state.habits.length;
   renderFocus();
+  renderTasks();
 }
 
 function updateFormula() {
@@ -426,6 +495,18 @@ $("#habitForm").addEventListener("submit", (event) => {
   closeComposer();
   render();
   showToast("新习惯已加入列表");
+});
+
+$("#taskForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const input = $("#taskTitle");
+  const title = input.value.trim();
+  if (!title) return;
+  state.smallTasks.unshift({ id: makeId(), title, createdAt: new Date().toISOString(), completedAt: null });
+  input.value = "";
+  saveState();
+  renderTasks();
+  showToast("小任务已加入");
 });
 
 $("#checkToday").addEventListener("click", () => {
