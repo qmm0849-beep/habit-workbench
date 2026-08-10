@@ -14,10 +14,16 @@
         <div class="brand" aria-label="习惯工作台">
           <span>循</span>
         </div>
-        <div class="single-rail-label" aria-hidden="true">
-          <span class="single-rail-icon">⌁</span>
-          <span>习惯</span>
-        </div>
+        <nav class="rail-nav" aria-label="工作台工具">
+          <button class="nav-item is-active" data-workspace="habits" type="button" aria-pressed="true">
+            <span class="nav-icon" aria-hidden="true">⌁</span>
+            <span>习惯</span>
+          </button>
+          <button class="nav-item" data-workspace="tasks" type="button" aria-pressed="false">
+            <span class="nav-icon" aria-hidden="true">✓</span>
+            <span>任务</span>
+          </button>
+        </nav>
         <div class="week-mark" aria-label="当前周数">
           <span>W</span>
           <strong id="weekNumber">01</strong>
@@ -25,6 +31,7 @@
       </aside>
 
       <main class="main-canvas">
+        <div class="workspace-view" id="habitView">
         <header class="page-header">
           <div>
             <p class="eyebrow" id="todayLabel">今天</p>
@@ -68,25 +75,6 @@
           <div class="habit-list" id="habitList" aria-live="polite"></div>
         </section>
 
-        <section class="habit-section task-section">
-          <div class="section-heading">
-            <div>
-              <p class="section-kicker">一次完成</p>
-              <h2>小任务</h2>
-            </div>
-            <div class="honor-counter" aria-label="累计荣誉星">
-              <span aria-hidden="true">★</span>
-              <strong id="honorCount">0</strong>
-            </div>
-          </div>
-          <p class="drag-hint">记下临时事务，完成一项就获得一枚荣誉星。</p>
-          <form class="task-composer" id="taskForm">
-            <input id="taskTitle" type="text" maxlength="60" placeholder="例如：回复那封邮件" aria-label="小任务内容" required />
-            <button type="submit">添加</button>
-          </form>
-          <div class="task-list" id="taskList" aria-live="polite"></div>
-        </section>
-
         <div class="data-panel">
           <div>
             <strong>数据备份与迁移</strong>
@@ -97,6 +85,35 @@
             <button class="data-button is-primary" id="importData" type="button">导入并替换</button>
             <input id="importFile" type="file" accept=".json,application/json" hidden />
           </div>
+        </div>
+        </div>
+
+        <div class="workspace-view is-hidden" id="taskView">
+          <header class="page-header task-page-header">
+            <div>
+              <p class="eyebrow" id="taskTodayLabel">今天</p>
+              <h1>小任务工作台</h1>
+            </div>
+            <div class="honor-counter" aria-label="累计荣誉星">
+              <span aria-hidden="true">★</span>
+              <strong id="honorCount">0</strong>
+            </div>
+          </header>
+
+          <section class="habit-section task-section task-view-section">
+            <div class="section-heading">
+              <div>
+                <p class="section-kicker">一次完成</p>
+                <h2>我的小任务</h2>
+              </div>
+            </div>
+            <p class="drag-hint">记下临时事务，完成一项就获得一枚荣誉星。</p>
+            <form class="task-composer" id="taskForm">
+              <input id="taskTitle" type="text" maxlength="60" placeholder="例如：回复那封邮件" aria-label="小任务内容" required />
+              <button type="submit">添加</button>
+            </form>
+            <div class="task-list" id="taskList" aria-live="polite"></div>
+          </section>
         </div>
       </main>
     </div>

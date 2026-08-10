@@ -55,12 +55,13 @@ function loadState() {
         focusId,
         smallTasks: normalizeSmallTasks(saved.smallTasks),
         honorCount: Number.isFinite(saved.honorCount) ? Math.max(0, saved.honorCount) : 0,
+        activeView: saved.activeView === "tasks" ? "tasks" : "habits",
       };
     }
   } catch (error) {
     console.warn("无法读取本地习惯数据", error);
   }
-  return { habits: starterHabits, focusId: starterHabits[0].id, smallTasks: [], honorCount: 0 };
+  return { habits: starterHabits, focusId: starterHabits[0].id, smallTasks: [], honorCount: 0, activeView: "habits" };
 }
 
 let state = loadState();
@@ -158,7 +159,7 @@ function normalizeImportedState(payload) {
   const smallTasks = normalizeSmallTasks(payload.smallTasks);
   const completedCount = smallTasks.filter((task) => task.completedAt).length;
   const honorCount = Number.isFinite(payload.honorCount) ? Math.max(0, payload.honorCount) : completedCount;
-  return { habits, focusId, smallTasks, honorCount };
+  return { habits, focusId, smallTasks, honorCount, activeView: payload.activeView === "tasks" ? "tasks" : "habits" };
 }
 
 function exportData() {
@@ -170,6 +171,7 @@ function exportData() {
     focusId: state.focusId,
     smallTasks: state.smallTasks,
     honorCount: state.honorCount,
+    activeView: state.activeView,
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -229,6 +231,22 @@ function renderTasks() {
     taskList.append(node);
   }
   $("#honorCount").textContent = state.honorCount;
+}
+
+function applyWorkspaceView(view, persist = true) {
+  const activeView = view === "tasks" ? "tasks" : "habits";
+  state.activeView = activeView;
+  $("#habitView").classList.toggle("is-hidden", activeView !== "habits");
+  $("#taskView").classList.toggle("is-hidden", activeView !== "tasks");
+  document.querySelectorAll(".nav-item").forEach((button) => {
+    const active = button.dataset.workspace === activeView;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  if (persist) {
+    saveState();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 }
 
 function toggleSmallTask(id) {
@@ -438,6 +456,7 @@ function render() {
   $("#habitCount").textContent = state.habits.length;
   renderFocus();
   renderTasks();
+  applyWorkspaceView(state.activeView, false);
 }
 
 function updateFormula() {
@@ -509,6 +528,10 @@ $("#taskForm").addEventListener("submit", (event) => {
   showToast("小任务已加入");
 });
 
+document.querySelectorAll(".nav-item").forEach((button) => {
+  button.addEventListener("click", () => applyWorkspaceView(button.dataset.workspace));
+});
+
 $("#checkToday").addEventListener("click", () => {
   const focus = state.habits.find((habit) => habit.id === state.focusId);
   if (!focus) return;
@@ -539,6 +562,8 @@ document.addEventListener("click", (event) => {
 });
 
 const today = new Date();
-$("#todayLabel").textContent = `${today.getMonth() + 1} 月 ${today.getDate()} 日 · ${new Intl.DateTimeFormat("zh-CN", { weekday: "long" }).format(today)}`;
+const todayText = `${today.getMonth() + 1} 月 ${today.getDate()} 日 · ${new Intl.DateTimeFormat("zh-CN", { weekday: "long" }).format(today)}`;
+$("#todayLabel").textContent = todayText;
+$("#taskTodayLabel").textContent = todayText;
 $("#weekNumber").textContent = String(weekNumber(today)).padStart(2, "0");
 render();

@@ -289,6 +289,8 @@ h1 { margin-bottom: 0; font-family: Georgia, "Noto Serif SC", serif; font-size: 
 .empty-state p { margin: 0; font-size: 12px; }
 
 .task-section { margin-top: 43px; }
+.task-view-section { margin-top: 0; }
+.task-page-header { align-items: center; }
 .honor-counter {
   min-width: 58px;
   height: 34px;
