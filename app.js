@@ -55,22 +55,26 @@ function loadState() {
         focusId,
         smallTasks: normalizeSmallTasks(saved.smallTasks),
         honorCount: Number.isFinite(saved.honorCount) ? Math.max(0, saved.honorCount) : 0,
-        activeView: saved.activeView === "tasks" ? "tasks" : "habits",
+        activeView: ["habits", "tasks", "nutrition"].includes(saved.activeView) ? saved.activeView : "habits",
+        calorieEntries: normalizeCalorieEntries(saved.calorieEntries),
+        calorieTarget: normalizeCalorieTarget(saved.calorieTarget),
       };
     }
   } catch (error) {
     console.warn("无法读取本地习惯数据", error);
   }
-  return { habits: starterHabits, focusId: starterHabits[0].id, smallTasks: [], honorCount: 0, activeView: "habits" };
+  return { habits: starterHabits, focusId: starterHabits[0].id, smallTasks: [], honorCount: 0, activeView: "habits", calorieEntries: [], calorieTarget: 2000 };
 }
 
 let state = loadState();
 let pointerDrag = null;
 let toastTimer = null;
+let selectedNutritionDate = dateKey(new Date());
 
 const $ = (selector) => document.querySelector(selector);
 const habitList = $("#habitList");
 const taskList = $("#taskList");
+const foodList = $("#foodList");
 const composer = $("#composer");
 const fields = {
   start: $("#habitStart"),
@@ -132,6 +136,28 @@ function normalizeSmallTasks(tasks) {
   }).filter(Boolean);
 }
 
+function normalizeCalorieEntries(entries) {
+  const mealTypes = ["breakfast", "lunch", "dinner", "snack"];
+  if (!Array.isArray(entries)) return [];
+  return entries.map((entry) => {
+    const calories = Number(entry?.calories);
+    if (!entry || typeof entry.name !== "string" || !entry.name.trim() || !Number.isFinite(calories) || calories <= 0) return null;
+    return {
+      id: typeof entry.id === "string" && entry.id ? entry.id : makeId(),
+      name: entry.name.trim(),
+      calories: Math.round(calories),
+      mealType: mealTypes.includes(entry.mealType) ? entry.mealType : "snack",
+      date: /^\d{4}-\d{2}-\d{2}$/.test(entry.date || "") ? entry.date : dateKey(new Date()),
+      createdAt: entry.createdAt || new Date().toISOString(),
+    };
+  }).filter(Boolean);
+}
+
+function normalizeCalorieTarget(value) {
+  const target = Number(value);
+  return Number.isFinite(target) && target >= 100 && target <= 10000 ? Math.round(target) : 2000;
+}
+
 function normalizeImportedState(payload) {
   if (!Array.isArray(payload?.habits)) throw new Error("备份文件中没有习惯列表");
   const today = dateKey(new Date());
@@ -159,7 +185,16 @@ function normalizeImportedState(payload) {
   const smallTasks = normalizeSmallTasks(payload.smallTasks);
   const completedCount = smallTasks.filter((task) => task.completedAt).length;
   const honorCount = Number.isFinite(payload.honorCount) ? Math.max(0, payload.honorCount) : completedCount;
-  return { habits, focusId, smallTasks, honorCount, activeView: payload.activeView === "tasks" ? "tasks" : "habits" };
+  const activeView = ["habits", "tasks", "nutrition"].includes(payload.activeView) ? payload.activeView : "habits";
+  return {
+    habits,
+    focusId,
+    smallTasks,
+    honorCount,
+    activeView,
+    calorieEntries: normalizeCalorieEntries(payload.calorieEntries),
+    calorieTarget: normalizeCalorieTarget(payload.calorieTarget),
+  };
 }
 
 function exportData() {
@@ -172,6 +207,8 @@ function exportData() {
     smallTasks: state.smallTasks,
     honorCount: state.honorCount,
     activeView: state.activeView,
+    calorieEntries: state.calorieEntries,
+    calorieTarget: state.calorieTarget,
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -234,10 +271,11 @@ function renderTasks() {
 }
 
 function applyWorkspaceView(view, persist = true) {
-  const activeView = view === "tasks" ? "tasks" : "habits";
+  const activeView = ["habits", "tasks", "nutrition"].includes(view) ? view : "habits";
   state.activeView = activeView;
   $("#habitView").classList.toggle("is-hidden", activeView !== "habits");
   $("#taskView").classList.toggle("is-hidden", activeView !== "tasks");
+  $("#nutritionView").classList.toggle("is-hidden", activeView !== "nutrition");
   document.querySelectorAll(".nav-item").forEach((button) => {
     const active = button.dataset.workspace === activeView;
     button.classList.toggle("is-active", active);
@@ -247,6 +285,49 @@ function applyWorkspaceView(view, persist = true) {
     saveState();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
+}
+
+function renderNutrition() {
+  const mealLabels = { breakfast: "早餐", lunch: "午餐", dinner: "晚餐", snack: "加餐" };
+  const entries = state.calorieEntries
+    .filter((entry) => entry.date === selectedNutritionDate)
+    .sort((first, second) => second.createdAt.localeCompare(first.createdAt));
+  const total = entries.reduce((sum, entry) => sum + entry.calories, 0);
+  const target = state.calorieTarget;
+  const remaining = target - total;
+
+  $("#nutritionDate").value = selectedNutritionDate;
+  $("#calorieTarget").value = target;
+  $("#calorieTotal").textContent = total;
+  $("#foodEntryCount").textContent = entries.length;
+  const progress = $("#calorieProgress");
+  progress.style.width = `${Math.min(100, Math.round((total / target) * 100))}%`;
+  progress.classList.toggle("is-over", remaining < 0);
+  $("#calorieBalance").textContent = remaining >= 0 ? `还可摄入 ${remaining} 千卡` : `已超出 ${Math.abs(remaining)} 千卡`;
+
+  foodList.innerHTML = "";
+  entries.forEach((entry) => {
+    const card = $("#foodCardTemplate").content.firstElementChild.cloneNode(true);
+    card.querySelector(".meal-badge").textContent = mealLabels[entry.mealType];
+    card.querySelector("h3").textContent = entry.name;
+    card.querySelector(".food-content p").textContent = shortDate(entry.date);
+    card.querySelector(".food-calories").textContent = `${entry.calories} 千卡`;
+    card.querySelector(".food-delete").addEventListener("click", () => deleteCalorieEntry(entry.id));
+    foodList.append(card);
+  });
+  if (!entries.length) {
+    const node = document.createElement("div");
+    node.className = "empty-state";
+    node.innerHTML = "<strong>这一天还没有饮食记录</strong><p>记录一餐后，会自动计算当日总热量。</p>";
+    foodList.append(node);
+  }
+}
+
+function deleteCalorieEntry(id) {
+  state.calorieEntries = state.calorieEntries.filter((entry) => entry.id !== id);
+  saveState();
+  renderNutrition();
+  showToast("饮食记录已删除");
 }
 
 function toggleSmallTask(id) {
@@ -456,6 +537,7 @@ function render() {
   $("#habitCount").textContent = state.habits.length;
   renderFocus();
   renderTasks();
+  renderNutrition();
   applyWorkspaceView(state.activeView, false);
 }
 
@@ -528,6 +610,38 @@ $("#taskForm").addEventListener("submit", (event) => {
   showToast("小任务已加入");
 });
 
+$("#foodForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const name = $("#foodName").value.trim();
+  const calories = Number($("#foodCalories").value);
+  if (!name || !Number.isFinite(calories) || calories <= 0) return;
+  state.calorieEntries.push({
+    id: makeId(),
+    name,
+    calories: Math.round(calories),
+    mealType: $("#mealType").value,
+    date: selectedNutritionDate,
+    createdAt: new Date().toISOString(),
+  });
+  $("#foodName").value = "";
+  $("#foodCalories").value = "";
+  saveState();
+  renderNutrition();
+  showToast("饮食热量已记录");
+});
+
+$("#nutritionDate").addEventListener("change", (event) => {
+  selectedNutritionDate = event.target.value || dateKey(new Date());
+  renderNutrition();
+});
+
+$("#calorieTarget").addEventListener("change", (event) => {
+  state.calorieTarget = normalizeCalorieTarget(event.target.value);
+  saveState();
+  renderNutrition();
+  showToast("每日热量目标已更新");
+});
+
 document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => applyWorkspaceView(button.dataset.workspace));
 });
@@ -565,5 +679,7 @@ const today = new Date();
 const todayText = `${today.getMonth() + 1} 月 ${today.getDate()} 日 · ${new Intl.DateTimeFormat("zh-CN", { weekday: "long" }).format(today)}`;
 $("#todayLabel").textContent = todayText;
 $("#taskTodayLabel").textContent = todayText;
+$("#nutritionTodayLabel").textContent = todayText;
+$("#nutritionDate").value = selectedNutritionDate;
 $("#weekNumber").textContent = String(weekNumber(today)).padStart(2, "0");
 render();

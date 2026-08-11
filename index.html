@@ -23,6 +23,10 @@
             <span class="nav-icon" aria-hidden="true">✓</span>
             <span>任务</span>
           </button>
+          <button class="nav-item" data-workspace="nutrition" type="button" aria-pressed="false">
+            <span class="nav-icon" aria-hidden="true">◒</span>
+            <span>饮食</span>
+          </button>
         </nav>
         <div class="week-mark" aria-label="当前周数">
           <span>W</span>
@@ -115,6 +119,66 @@
             <div class="task-list" id="taskList" aria-live="polite"></div>
           </section>
         </div>
+
+        <div class="workspace-view is-hidden" id="nutritionView">
+          <header class="page-header nutrition-page-header">
+            <div>
+              <p class="eyebrow" id="nutritionTodayLabel">今天</p>
+              <h1>饮食热量</h1>
+            </div>
+            <label class="nutrition-date-picker">
+              <span>记录日期</span>
+              <input id="nutritionDate" type="date" aria-label="饮食记录日期" />
+            </label>
+          </header>
+
+          <section class="calorie-summary" aria-labelledby="calorieTotal">
+            <div class="calorie-summary-top">
+              <div>
+                <p>当日摄入</p>
+                <div><strong id="calorieTotal">0</strong><span> 千卡</span></div>
+              </div>
+              <label class="calorie-target-field">
+                <span>每日目标</span>
+                <input id="calorieTarget" type="number" min="100" max="10000" step="50" inputmode="numeric" />
+                <small>千卡</small>
+              </label>
+            </div>
+            <div class="calorie-progress" aria-hidden="true"><i id="calorieProgress"></i></div>
+            <p class="calorie-balance" id="calorieBalance">还可摄入 2000 千卡</p>
+          </section>
+
+          <section class="habit-section nutrition-section">
+            <div class="section-heading">
+              <div>
+                <p class="section-kicker">饮食明细</p>
+                <h2>记录一餐</h2>
+              </div>
+              <span class="count-badge" id="foodEntryCount">0</span>
+            </div>
+            <form class="food-form" id="foodForm">
+              <label>
+                <span>餐次</span>
+                <select id="mealType" aria-label="餐次">
+                  <option value="breakfast">早餐</option>
+                  <option value="lunch">午餐</option>
+                  <option value="dinner">晚餐</option>
+                  <option value="snack">加餐</option>
+                </select>
+              </label>
+              <label class="food-name-field">
+                <span>食物</span>
+                <input id="foodName" type="text" maxlength="60" placeholder="例如：鸡蛋三明治" required />
+              </label>
+              <label>
+                <span>热量（千卡）</span>
+                <input id="foodCalories" type="number" min="1" max="10000" step="1" inputmode="decimal" placeholder="例如：320" required />
+              </label>
+              <button type="submit">加入记录</button>
+            </form>
+            <div class="food-list" id="foodList" aria-live="polite"></div>
+          </section>
+        </div>
       </main>
     </div>
 
@@ -192,6 +256,18 @@
           <p></p>
         </div>
         <button class="task-delete" type="button" aria-label="删除小任务">×</button>
+      </article>
+    </template>
+
+    <template id="foodCardTemplate">
+      <article class="food-card">
+        <span class="meal-badge"></span>
+        <div class="food-content">
+          <h3></h3>
+          <p></p>
+        </div>
+        <strong class="food-calories"></strong>
+        <button class="food-delete" type="button" aria-label="删除饮食记录">×</button>
       </article>
     </template>
 
