@@ -273,6 +273,7 @@ function renderTasks() {
 function applyWorkspaceView(view, persist = true) {
   const activeView = ["habits", "tasks", "nutrition"].includes(view) ? view : "habits";
   state.activeView = activeView;
+  document.body.dataset.workspace = activeView;
   $("#habitView").classList.toggle("is-hidden", activeView !== "habits");
   $("#taskView").classList.toggle("is-hidden", activeView !== "tasks");
   $("#nutritionView").classList.toggle("is-hidden", activeView !== "nutrition");
